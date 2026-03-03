@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/web/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -15,10 +16,13 @@
 
 # next.js
 /.next/
+/web/.next
 /out/
+/web/out
 
 # production
 /build
+/web/build
 
 # misc
 .DS_Store
@@ -39,3 +43,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+/pgadmin
+/postgres_data
+/redis
+/api_logs
+/assets

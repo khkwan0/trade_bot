@@ -1,0 +1,49 @@
+services:
+  web:
+    restart: always
+    user: '1000:1000'
+    build: ./web
+    ports:
+      - 33114:3000
+    env_file:
+      - .env
+    volumes:
+      - ./web:/usr/src/app
+      - ./assets:/usr/src/app/assets
+      - ./api_logs:/usr/src/app/logs
+    networks:
+      - internal_tradebot_net
+  redis:
+    restart: always
+    image: redis/redis-stack
+    volumes:
+      - ./redis:/data
+    networks:
+      - internal_tradebot_net
+  postgres:
+    user: '1000:1000'
+    restart: always
+    image: postgres:latest
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/18/docker
+      - ./migrations:/usr/src/app/migrations
+    env_file:
+      - .env
+    networks:
+      - internal_tradebot_net
+  pgadmin:
+    restart: always
+    image: dpage/pgadmin4:latest
+    env_file:
+      - .env
+    ports:
+      - 33120:443
+      - 33121:80
+    volumes:
+      - ./pgadmin:/var/lib/pgadmin
+    networks:
+      - internal_tradebot_net
+
+networks:
+  internal_tradebot_net:
+    driver: bridge
