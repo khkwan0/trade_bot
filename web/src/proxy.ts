@@ -2,6 +2,8 @@ import createMiddleware from 'next-intl/middleware'
 import {NextRequest, NextResponse} from 'next/server'
 import {logger, nextRequestId} from './lib/logger'
 
+export {auth as proxy} from '@/auth'
+
 const i18nMiddleware = createMiddleware({
   locales: [
     'en',

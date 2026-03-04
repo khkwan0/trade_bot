@@ -48,3 +48,4 @@ next-env.d.ts
 /redis
 /api_logs
 /assets
+google-perf-trace.json

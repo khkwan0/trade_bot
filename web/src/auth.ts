@@ -1,16 +1,15 @@
+import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import { db } from '@/lib/db'
 import bcrypt from 'bcrypt'
-import type {NextAuthOptions} from 'next-auth'
 
-export const authConfig: NextAuthOptions = {
-  trustHost: true, // Use X-Forwarded-Host/Proto when behind a proxy so redirects (e.g. logout) use the public URL
+export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       name: 'credentials',
       credentials: {
-        email: {label: 'Email', type: 'email'},
-        password: {label: 'Password', type: 'password'},
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -21,20 +20,21 @@ export const authConfig: NextAuthOptions = {
           const [user] = await db`
             SELECT * FROM users WHERE email ILIKE ${credentials.email} and active = true
           `
+          console.log('user', user)
 
           if (!user) {
             return null
           }
-
-          const isPasswordValid = await bcrypt.compare(
-            credentials.password,
+          
+          const isPasswordValid = bcrypt.compare(
+            credentials.password as string,
             user.password,
           )
 
           if (!isPasswordValid) {
             return null
           }
-
+          
           return {
             id: user.id.toString(),
             email: user.email,
@@ -63,9 +63,8 @@ export const authConfig: NextAuthOptions = {
   },
   pages: {
     signIn: '/auth/login',
-    error: '/auth/error',
   },
   session: {
     strategy: 'jwt',
   },
-}
+})

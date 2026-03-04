@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { getServerSession } from "next-auth"
+import { auth } from "@/auth"
 import { authConfig } from "@/lib/auth.config"
 
 type Props = {
@@ -9,7 +9,7 @@ type Props = {
 
 export default async function Home({ params }: Props) {
   const { locale } = await params
-  const session = await getServerSession(authConfig)
+  const session = await auth()
 
   if (session) {
     redirect(`/${locale}/members`)

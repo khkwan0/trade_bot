@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { getServerSession } from 'next-auth'
+import { auth } from '@/auth'
 import Header from '@/components/header'
 import { authConfig } from '@/lib/auth.config'
 
@@ -10,7 +10,7 @@ type Props = {
 
 export default async function MembersLayout({ children, params }: Props) {
   const { locale } = await params
-  const session = await getServerSession(authConfig)
+  const session = await auth()
 
   if (!session) {
     redirect(`/${locale}/auth/login?callbackUrl=/${locale}/members`)
@@ -18,7 +18,7 @@ export default async function MembersLayout({ children, params }: Props) {
 
   return (
     <>
-      <Header />
+      <Header locale={locale} />
       <main>{children}</main>
     </>
   )
