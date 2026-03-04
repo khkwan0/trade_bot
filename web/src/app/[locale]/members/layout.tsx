@@ -18,7 +18,7 @@ export default async function MembersLayout({children, params}: Props) {
   return (
     <>
       <Header locale={locale} />
-      <main>{children}</main>
+      <main className="min-h-0 w-full py-6">{children}</main>
     </>
   )
 }

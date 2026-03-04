@@ -3,6 +3,7 @@ import {getUserLocale} from '@/services/locale'
 import {auth} from '@/auth'
 
 export default getRequestConfig(async ({requestLocale}) => {
+  /*
   // Priority: URL parameter > Session Preferences (if logged in) > Cookie > Default
   let locale = await requestLocale
 
@@ -26,7 +27,8 @@ export default getRequestConfig(async ({requestLocale}) => {
       locale = await getUserLocale()
     }
   }
-
+    */
+  const locale = 'en'
   return {
     locale,
     messages: (await import(`../translations/${locale}.json`)).default,

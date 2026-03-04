@@ -20,8 +20,8 @@ export default async function Home({params}: Props) {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-6 bg-gradient-to-b from-[var(--background)] to-[var(--foreground)]/5">
-      <div className="max-w-2xl mx-auto text-center space-y-8">
+    <main className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[var(--background)] to-[var(--foreground)]/5">
+      <div className="w-full max-w-2xl mx-auto text-center space-y-8 px-2 sm:px-0">
         <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight text-[var(--foreground)]">
           Welcome to Trade Bot
         </h1>
@@ -31,7 +31,7 @@ export default async function Home({params}: Props) {
         <form action={signInWithGoogle} className="pt-4">
           <button
             type="submit"
-            className="inline-flex items-center justify-center gap-3 rounded-lg bg-white dark:bg-[#1f1f1f] text-[var(--foreground)] border border-[var(--foreground)]/20 px-6 py-3 text-base font-medium shadow-sm hover:bg-[var(--foreground)]/5 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--foreground)] focus:ring-offset-2 focus:ring-offset-[var(--background)]">
+            className="inline-flex items-center justify-center gap-3 rounded-lg bg-white dark:bg-[#1f1f1f] text-[var(--foreground)] border border-[var(--foreground)]/20 px-6 py-3 min-h-[48px] text-base font-medium shadow-sm hover:bg-[var(--foreground)]/5 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--foreground)] focus:ring-offset-2 focus:ring-offset-[var(--background)] [touch-action:manipulation]">
             <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden>
               <path
                 fill="#4285F4"

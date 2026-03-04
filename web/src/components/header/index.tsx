@@ -10,10 +10,11 @@ export default async function Header({ locale }: Props) {
   const session = await auth()
 
   return (
-    <header className="flex items-center justify-between px-6 py-4 border-b border-[var(--foreground)]/10 bg-[var(--background)]">
-      <Link
+    <div className="w-screen relative left-1/2 -ml-[50vw] border-b border-[var(--foreground)]/10 bg-[var(--background)]">
+      <header className="flex flex-wrap items-center justify-between gap-3 py-4 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <Link
         href={`/${locale}`}
-        className="text-xl font-semibold text-[var(--foreground)] hover:opacity-80 transition-opacity"
+        className="text-lg sm:text-xl font-semibold text-[var(--foreground)] hover:opacity-80 transition-opacity min-h-[44px] min-w-[44px] flex items-center"
       >
         Trade Bot
       </Link>
@@ -22,13 +23,14 @@ export default async function Header({ locale }: Props) {
           <input type="hidden" name="locale" value={locale} />
           <button
             type="submit"
-            className="rounded-lg border border-[var(--foreground)]/30 px-4 py-2 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--foreground)]/10 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--foreground)] focus:ring-offset-2 focus:ring-offset-[var(--background)]"
+            className="rounded-lg border border-[var(--foreground)]/30 px-4 py-2.5 min-h-[44px] text-sm font-medium text-[var(--foreground)] hover:bg-[var(--foreground)]/10 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--foreground)] focus:ring-offset-2 focus:ring-offset-[var(--background)] [touch-action:manipulation]"
           >
             Log out
           </button>
         </form>
       )}
-    </header>
+      </header>
+    </div>
   )
 }
 
