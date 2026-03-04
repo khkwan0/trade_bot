@@ -36,5 +36,5 @@ async function logoutAction(formData: FormData) {
   'use server'
   const locale = (formData.get('locale') as string) ?? 'en'
   await signOut({ redirect: false })
-  redirect(`/${locale}/auth/login`)
+  redirect(`/${locale}`)
 }

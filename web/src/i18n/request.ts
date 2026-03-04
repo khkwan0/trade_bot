@@ -1,7 +1,6 @@
 import {getRequestConfig} from 'next-intl/server'
 import {getUserLocale} from '@/services/locale'
-import {getServerSession} from 'next-auth'
-import {authConfig} from '@/lib/auth.config'
+import {auth} from '@/auth'
 
 export default getRequestConfig(async ({requestLocale}) => {
   // Priority: URL parameter > Session Preferences (if logged in) > Cookie > Default
@@ -10,7 +9,7 @@ export default getRequestConfig(async ({requestLocale}) => {
   if (!locale) {
     // If no URL locale, check session preferences first (if user is logged in)
     try {
-      const session = await getServerSession(authConfig)
+      const session = await auth()
       const preferences = session?.user?.preferences as
         | {language?: string}
         | undefined

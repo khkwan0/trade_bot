@@ -1,70 +1,39 @@
 import NextAuth from 'next-auth'
-import Credentials from 'next-auth/providers/credentials'
-import { db } from '@/lib/db'
-import bcrypt from 'bcrypt'
+import Google from 'next-auth/providers/google'
+import {PrismaAdapter} from '@auth/prisma-adapter'
+import {prisma} from '@/lib/prisma'
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [
-    Credentials({
-      name: 'credentials',
-      credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null
-        }
-
-        try {
-          const [user] = await db`
-            SELECT * FROM users WHERE email ILIKE ${credentials.email} and active = true
-          `
-          console.log('user', user)
-
-          if (!user) {
-            return null
-          }
-          
-          const isPasswordValid = bcrypt.compare(
-            credentials.password as string,
-            user.password,
-          )
-
-          if (!isPasswordValid) {
-            return null
-          }
-          
-          return {
-            id: user.id.toString(),
-            email: user.email,
-          }
-        } catch (error) {
-          console.error('Auth error:', error)
-          return null
-        }
-      },
-    }),
-  ],
-  secret: process.env.NEXTAUTH_SECRET,
+export const {handlers, auth, signIn, signOut} = NextAuth({
+  adapter: PrismaAdapter(prisma),
+  providers: [Google],
   callbacks: {
-    async jwt({token, user}) {
-      if (user) {
-        token.id = user.id
+    signIn: async ({user}): Promise<boolean> => {
+      console.log('signIn', user)
+      if (!user.email) {
+        return false
       }
-      return token
+      const dbUser = await prisma.user.findUnique({
+        where: {email: user.email},
+      })
+      if (!dbUser) {
+        return true
+      }
+      if (!dbUser.isActive) {
+        return false
+      }
+      return true
     },
-    async session({session, token}) {
-      if (token && session.user) {
-        session.user.id = token.id as string
+    redirect({url, baseUrl}) {
+      return '/'
+    },
+    session: async ({session, user}) => {
+      if (session.user.email) {
+        const dbUser = await prisma.user.findUnique({
+          where: {email: session.user.email},
+        })
+        session.user.isActive = dbUser?.isActive ?? false
       }
       return session
     },
-  },
-  pages: {
-    signIn: '/auth/login',
-  },
-  session: {
-    strategy: 'jwt',
   },
 })
