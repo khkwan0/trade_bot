@@ -15,7 +15,8 @@ model User {
   isActive      Boolean         @default(true)
   accounts      Account[]
   sessions      Session[]
- 
+  telegrams     telegram[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -61,19 +62,23 @@ model VerificationToken {
 
 model exchanges {
   id         Int      @id @default(autoincrement())
+  user_id    String
   name       String   @db.VarChar(255)
-  url        String   @db.VarChar(255)
+  url        String?  @db.VarChar(255)
   api_key    String?  @db.VarChar(255)
   api_secret String?  @db.VarChar(255)
   active     Boolean  @default(true)
   created_at DateTime @default(now()) @db.Timestamptz(6)
   updated_at DateTime @default(now()) @db.Timestamptz(6)
   pairs      pairs[]
+
+  @@unique([name, user_id])
 }
 
 model pairs {
   id             Int       @id @default(autoincrement())
   exchange_id    Int
+  user_id        String
   base_currency  String    @db.VarChar(255)
   quote_currency String    @db.VarChar(255)
   active         Boolean   @default(true)
@@ -84,7 +89,7 @@ model pairs {
 
 model preferences {
   id          Int      @id @default(autoincrement())
-  user_id     Int
+  user_id     String
   language    String   @default("en") @db.VarChar(255)
   preferences Json     @default("{}")
   created_at  DateTime @default(now()) @db.Timestamp(6)
@@ -94,8 +99,28 @@ model preferences {
 model telegram {
   id         Int      @id @default(autoincrement())
   tg_id      Int
+  user_id    String
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   prices_ttl Int      @default(300)
   token      String?  @db.VarChar(255)
   created_at DateTime @default(now()) @db.Timestamptz(6)
   updated_at DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model networks {
+  user_id    String
+  network    String   @unique
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model contracts {
+  user_id    String
+  network    String
+  token      String
+  address    String
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([network, token])
 }

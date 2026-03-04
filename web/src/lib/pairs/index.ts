@@ -1,7 +1,9 @@
-import { db } from "@/lib/db"
+import {prisma} from '@/lib/prisma'
 
 export const GetPairsByExchangeId = async (exchangeId: string) => {
-  const res = await db`SELECT id, base_currency, quote_currency FROM pairs WHERE exchange_id = ${exchangeId} AND active = TRUE`
-  const pairs = res.map((row: { id: number; base_currency: string; quote_currency: string }) => `${row.base_currency}_${row.quote_currency}`)
-  return pairs
+  const rows = await prisma.pairs.findMany({
+    where: {exchange_id: Number(exchangeId), active: true},
+    select: {base_currency: true, quote_currency: true},
+  })
+  return rows.map(row => `${row.base_currency}_${row.quote_currency}`)
 }

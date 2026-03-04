@@ -14,9 +14,8 @@ export default async function Home({params}: Props) {
   const {locale} = await params
   const session = await auth()
 
-  console.log('session', session)
   if (session && session.user?.isActive) {
-    redirect(`/${locale}/members`)
+    redirect(`/${locale}/dashboard`)
   }
 
   return (

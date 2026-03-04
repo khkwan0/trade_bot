@@ -1,4 +1,4 @@
-import { db } from "@/lib/db"
+import { prisma } from "@/lib/prisma"
 
 export type CommandResponse = {
   text: string
@@ -23,8 +23,11 @@ export const StartCommand = (): CommandResponse => {
 }
 
 async function PricesCommand(): Promise<CommandResponse> {
-  const rows = await db`SELECT id, name FROM exchanges ORDER BY name`
-  const buttons: { text: string; callback_data: string }[] = rows.map((row: { id: number; name: string }) => ({
+  const rows = await prisma.exchanges.findMany({
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  })
+  const buttons: { text: string; callback_data: string }[] = rows.map((row) => ({
     text: row.name,
     callback_data: `prices:${row.id}`,
   }))

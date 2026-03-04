@@ -1,6 +1,6 @@
-import { db } from "@/lib/db"
+import { prisma } from "@/lib/prisma"
 
 export const GetTGIDs = async () => {
-  const tgIds = await db`SELECT tg_id FROM telegram`
-  return tgIds.map((tgId: { tg_id: number }) => tgId.tg_id)
+  const rows = await prisma.telegram.findMany({ select: { tg_id: true } })
+  return rows.map((row) => row.tg_id)
 }
