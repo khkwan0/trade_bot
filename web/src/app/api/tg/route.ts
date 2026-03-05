@@ -1,5 +1,5 @@
 import {NextRequest, NextResponse} from 'next/server'
-import {GetTGIDs} from '@/lib/tg'
+import {GetTGIDs, GetUserIdByTGID} from '@/lib/tg'
 import {HandleCommand} from '@/lib/tg/commands'
 import {HandleCallback} from '@/lib/tg/callbacks'
 import {logger} from '@/lib/logger'
@@ -57,11 +57,22 @@ export async function POST(request: NextRequest) {
     logger.info('Incoming TG message from ID: ' + fromId)
     logger.info('TG message: ' + text)
     if (text.startsWith('/') && tgIds.includes(fromId)) {
+      const userId = await GetUserIdByTGID(fromId)
+      if (!userId) {
+        return NextResponse.json({status: 200})
+      }
       logger.info('Command detected ' + text)
       const command = text.slice(1).split(/\s/)[0]
-      const response = await HandleCommand(command)
+      const response = await HandleCommand(command, userId)
+      const commandTTL = 30
       if (response) {
-        await sendTelegramMessage(chatId, response.text, response.reply_markup)
+        await sendTelegramMessage(
+          chatId,
+          response.text,
+          response.reply_markup,
+          undefined,
+          commandTTL,
+        )
       }
       return NextResponse.json({status: 200})
     }

@@ -3,9 +3,16 @@ import Google from 'next-auth/providers/google'
 import {PrismaAdapter} from '@auth/prisma-adapter'
 import {prisma} from '@/lib/prisma'
 
+const FIVE_MINUTES = 5 * 60
+const ONE_MINUTE = 60
+
 export const {handlers, auth, signIn, signOut} = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [Google],
+  session: {
+    maxAge: FIVE_MINUTES,
+    updateAge: ONE_MINUTE,
+  },
   callbacks: {
     signIn: async ({user}): Promise<boolean> => {
       console.log('signIn', user)
@@ -33,6 +40,7 @@ export const {handlers, auth, signIn, signOut} = NextAuth({
           where: {email: session.user.email},
         })
         session.user.isActive = dbUser?.isActive ?? false
+        session.user.isAdmin = dbUser?.isAdmin ?? false
       }
       return session
     },

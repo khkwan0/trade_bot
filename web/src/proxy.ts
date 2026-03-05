@@ -5,9 +5,7 @@ import {logger, nextRequestId} from './lib/logger'
 export {auth as proxy} from '@/auth'
 
 const i18nMiddleware = createMiddleware({
-  locales: [
-    'en',
-  ],
+  locales: ['en'],
   defaultLocale: 'en',
 })
 
@@ -63,7 +61,6 @@ export default async function middleware(request: NextRequest) {
   if (isStaticFile) {
     return NextResponse.next()
   }
-
   // Skip i18n middleware for socket.io paths
   if (pathname.startsWith('/socket.io')) {
     return NextResponse.next()

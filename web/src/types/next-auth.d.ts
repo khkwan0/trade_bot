@@ -5,6 +5,7 @@ declare module 'next-auth' {
   interface User {
     id?: string
     isActive?: boolean
+    isAdmin?: boolean
     preferences?: UserPreferences
   }
 

@@ -37,8 +37,8 @@ services:
     env_file:
       - .env
     ports:
-      - 33120:443
-      - 33121:80
+      - "192.168.6.103:33120:443"
+      - "192.168.6.103:33121:80"
     volumes:
       - ./pgadmin:/var/lib/pgadmin
     networks:

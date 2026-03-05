@@ -13,6 +13,7 @@ model User {
   emailVerified DateTime?
   image         String?
   isActive      Boolean         @default(true)
+  isAdmin       Boolean         @default(false)
   accounts      Account[]
   sessions      Session[]
   telegrams     telegram[]
@@ -123,4 +124,10 @@ model contracts {
   updated_at DateTime @default(now()) @db.Timestamptz(6)
 
   @@unique([network, token])
+}
+
+model whitelist {
+  email      String   @unique 
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
 }
