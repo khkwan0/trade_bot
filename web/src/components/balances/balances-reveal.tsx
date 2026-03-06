@@ -89,7 +89,7 @@ export function BalancesReveal({entries}: Props) {
       </div>
 
       {visible ? (
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {entries.map(([exchangeName, balances]) => {
             const tokenEntries = Object.entries(balances)
             if (tokenEntries.length === 0) return null

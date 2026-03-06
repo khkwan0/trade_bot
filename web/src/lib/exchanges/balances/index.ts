@@ -20,8 +20,16 @@ const NormalizeBalancesMap = {
     }
     return normalizedBalances
   },
-  kraken: function (rawBalances: Record<string, unknown>) {
-    return rawBalances
+  kraken: function (
+    rawBalances: Record<string, string>,
+  ): Record<string, {available: number; reserved: number}> {
+    const normalized: Record<string, {available: number; reserved: number}> = {}
+    for (const [asset, balanceStr] of Object.entries(rawBalances)) {
+      const available = parseFloat(balanceStr)
+      if (Number.isNaN(available) || available <= 0) continue
+      normalized[asset] = { available, reserved: 0 }
+    }
+    return normalized
   },
 }
 
@@ -47,8 +55,24 @@ export default {
     const normalized = NormalizeBalancesMap.bitkub(data.result)
     return normalized
   },
-  kraken: function (rawBalances: Record<string, unknown>) {
-    // todo
-    return null
+  kraken: async function (exchange: ExchangeInfo) {
+    if (!exchange.apiKey || !exchange.apiSecret) {
+      throw new Error('Kraken API key and secret required')
+    }
+    const path = '/0/private/Balance'
+    const url = `https://api.kraken.com${path}`
+    const sig = await ApiSignatures.kraken(
+      exchange.apiKey,
+      exchange.apiSecret,
+      path,
+    )
+    const { body, ...headers } = sig
+    const res = await fetch(url, { method: 'POST', headers, body })
+    const data = await res.json()
+    if (data.error?.length) {
+      throw new Error('Kraken API error: ' + (data.error as string[]).join(', '))
+    }
+    const raw = (data.result ?? {}) as Record<string, string>
+    return NormalizeBalancesMap.kraken(raw)
   },
 }
