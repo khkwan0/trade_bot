@@ -33,6 +33,9 @@ const PriceEndPoints: Record<string, (pairs: string[]) => string> = {
       'https://api.jupiter.com/v1/prices?symbols=' + pairMappings.join(',')
     return finalUrl
   },
+  binance: function (): string {
+    return 'https://api.binance.com/api/v3/ticker/price'
+  },
 }
 
 const NormalizePricesMap = {
@@ -93,6 +96,18 @@ const NormalizePricesMap = {
   },
   jupiter: function (prices: any): Record<string, number> {
     return prices
+  },
+  binance: function (prices: any, pairs: string[]): Record<string, number> {
+    const response: Record<string, number> = {}
+    for (const pair of pairs) {
+      const price = prices.find(
+        (p: {symbol: string; price: number}) =>
+          p.symbol === pair.replace('_', '').toUpperCase(),
+      )
+      if (!price) continue
+      response[pair] = price.price
+    }
+    return response
   },
 }
 

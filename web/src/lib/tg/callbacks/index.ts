@@ -1,5 +1,6 @@
 import {GetPrices} from '@/lib/prices'
-import {GetPairsByExchangeId} from '@/lib/pairs'
+import {GetPairsByUserIdAndExchangeId} from '@/lib/pairs'
+import {GetUserIdByTGID} from '@/lib/tg'
 import {GetBalancesFromExchange} from '@/lib/exchanges'
 import {GetTTL} from '@/lib/ttl'
 import {logger} from '@/lib/logger'
@@ -68,13 +69,21 @@ export const HandleCallback = async (
   logger.info('Handling callback query from ID: ' + tgId + ' data: ' + data)
   const [command, exchangeId] = data.split(':')
   if (command === 'prices') {
-    const prices = await PricesCallback(exchangeId)
+    const userId = await GetUserIdByTGID(tgId)
+    if (!userId) {
+      return null
+    }
+    const prices = await PricesCallback(exchangeId, userId)
     const text = formatPricesTwoColumn(prices)
     const ttl = await GetTTL(tgId)
     return text ? {text, ttl: ttl} : null
   }
   if (command === 'balances') {
-    const balances = await BalancesCallback(exchangeId)
+    const userId = await GetUserIdByTGID(tgId)
+    if (!userId) {
+      return null
+    }
+    const balances = await BalancesCallback(exchangeId, userId)
     const balancesNoNull: Record<string, Record<string, Balance>> = {}
     for (const [exchange, b] of Object.entries(balances)) {
       if (b !== null) balancesNoNull[exchange] = b
@@ -86,13 +95,13 @@ export const HandleCallback = async (
   return null
 }
 
-async function PricesCallback(exchangeId: string) {
-  const pairs = await GetPairsByExchangeId(exchangeId)
+async function PricesCallback(exchangeId: string, userId: string) {
+  const pairs = await GetPairsByUserIdAndExchangeId(userId, exchangeId)
   logger.info('Getting prices for exchange ID: ' + exchangeId)
   logger.info('Pairs: ' + pairs.join(', '))
   return GetPrices(exchangeId, pairs)
 }
 
-async function BalancesCallback(exchangeId: string) {
-  return GetBalancesFromExchange(exchangeId)
+async function BalancesCallback(exchangeId: string, userId: string) {
+  return GetBalancesFromExchange(exchangeId, userId)
 }

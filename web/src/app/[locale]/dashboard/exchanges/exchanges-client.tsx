@@ -3,8 +3,15 @@
 import {useEffect, useState} from 'react'
 import {useRouter} from 'next/navigation'
 
-export type ExchangeItem = {
+export type AvailableExchange = {
   id: number
+  name: string
+  url: string | null
+}
+
+export type UserExchangeItem = {
+  id: number
+  exchange_id: number
   name: string
   url: string | null
   hasApiKey: boolean
@@ -24,63 +31,93 @@ type Props = {
 
 export function ExchangesClient({locale}: Props) {
   const router = useRouter()
-  const [exchanges, setExchanges] = useState<ExchangeItem[]>([])
+  const [availableExchanges, setAvailableExchanges] = useState<AvailableExchange[]>([])
+  const [userExchanges, setUserExchanges] = useState<UserExchangeItem[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<{type: 'error' | 'success'; text: string} | null>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState({
-    name: '',
-    url: '',
+    exchange_id: '' as number | '',
     api_key: '',
     api_secret: '',
   })
 
-  const fetchExchanges = async () => {
+  const fetchAvailable = async () => {
+    const res = await fetch('/api/exchanges/available')
+    if (res.status === 401) {
+      router.push(`/${locale}`)
+      return
+    }
+    if (!res.ok) return
+    const data = await res.json()
+    setAvailableExchanges(Array.isArray(data) ? data : [])
+  }
+
+  const fetchUserExchanges = async () => {
     const res = await fetch('/api/exchange')
     if (res.status === 401) {
       router.push(`/${locale}`)
       return
     }
     if (!res.ok) {
-      setMessage({type: 'error', text: 'Failed to load exchanges.'})
+      setMessage({type: 'error', text: 'Failed to load your exchanges.'})
       return
     }
     const data = await res.json()
-    setExchanges(data)
+    setUserExchanges(Array.isArray(data) ? data : [])
+  }
+
+  const load = async () => {
+    setLoading(true)
+    setMessage(null)
+    try {
+      await Promise.all([fetchAvailable(), fetchUserExchanges()])
+    } catch {
+      setMessage({type: 'error', text: 'Failed to load.'})
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    fetch('/api/exchange')
-      .then(res => {
-        if (cancelled) return
-        if (res.status === 401) {
-          router.push(`/${locale}`)
-          return
-        }
-        return res.json()
-      })
-      .then(data => {
-        if (!cancelled && Array.isArray(data)) setExchanges(data)
-      })
-      .catch(() => {
-        if (!cancelled) setMessage({type: 'error', text: 'Failed to load exchanges.'})
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
+    const run = async () => {
+      const res = await fetch('/api/exchange')
+      if (cancelled) return
+      if (res.status === 401) {
+        router.push(`/${locale}`)
+        return
+      }
+      const availRes = await fetch('/api/exchanges/available')
+      if (cancelled) return
+      if (availRes.status === 401) {
+        router.push(`/${locale}`)
+        return
+      }
+      const data = await res.json().catch(() => [])
+      const avail = await availRes.json().catch(() => [])
+      if (!cancelled) {
+        setUserExchanges(Array.isArray(data) ? data : [])
+        setAvailableExchanges(Array.isArray(avail) ? avail : [])
+      }
+    }
+    run().finally(() => {
+      if (!cancelled) setLoading(false)
+    })
     return () => {
       cancelled = true
     }
   }, [locale, router])
 
-  const setEditing = (ex: ExchangeItem | null) => {
-    setEditingId(ex?.id ?? null)
+  const exchangesToOffer = availableExchanges.filter(
+    ex => !userExchanges.some(ue => ue.exchange_id === ex.id),
+  )
+
+  const setEditing = (ue: UserExchangeItem | null) => {
+    setEditingId(ue?.id ?? null)
     setForm({
-      name: ex?.name ?? '',
-      url: ex?.url ?? '',
+      exchange_id: ue?.exchange_id ?? '',
       api_key: '',
       api_secret: '',
     })
@@ -90,11 +127,6 @@ export function ExchangesClient({locale}: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setMessage(null)
-    const name = form.name.trim()
-    if (!name) {
-      setMessage({type: 'error', text: 'Name is required.'})
-      return
-    }
     setSubmitting(true)
     try {
       if (editingId != null) {
@@ -103,35 +135,34 @@ export function ExchangesClient({locale}: Props) {
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
             id: editingId,
-            name,
-            url: form.url.trim() || null,
-            ...(form.api_key && {api_key: form.api_key}),
-            ...(form.api_secret && {api_secret: form.api_secret}),
+            ...(form.api_key !== '' && {api_key: form.api_key}),
+            ...(form.api_secret !== '' && {api_secret: form.api_secret}),
           }),
         })
         const data = await res.json()
         if (!res.ok) {
           const err = data?.error ?? 'update_failed'
           const text =
-            err === 'name_required'
-              ? 'Name is required.'
-              : err === 'duplicate_name'
-                ? 'An exchange with this name already exists for your account.'
-                : err === 'not_found'
-                  ? 'Exchange not found.'
-                  : 'Failed to update exchange. Please try again.'
+            err === 'not_found'
+              ? 'Connection not found.'
+              : 'Failed to update. Please try again.'
           setMessage({type: 'error', text})
           return
         }
-        setMessage({type: 'success', text: 'Exchange updated.'})
+        setMessage({type: 'success', text: 'API keys updated.'})
         setEditing(null)
+        setForm({exchange_id: '', api_key: '', api_secret: ''})
       } else {
+        const exchangeId = form.exchange_id === '' ? NaN : Number(form.exchange_id)
+        if (!Number.isInteger(exchangeId)) {
+          setMessage({type: 'error', text: 'Please select an exchange.'})
+          return
+        }
         const res = await fetch('/api/exchange', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
-            name,
-            url: form.url.trim() || null,
+            exchange_id: exchangeId,
             api_key: form.api_key.trim() || null,
             api_secret: form.api_secret.trim() || null,
           }),
@@ -140,25 +171,25 @@ export function ExchangesClient({locale}: Props) {
         if (!res.ok) {
           const err = data?.error ?? 'create_failed'
           const text =
-            err === 'name_required'
-              ? 'Name is required.'
-              : err === 'duplicate_name'
-                ? 'An exchange with this name already exists for your account.'
-                : 'Failed to create exchange. Please try again.'
+            err === 'exchange_not_found'
+              ? 'Selected exchange is not available.'
+              : err === 'already_connected'
+                ? 'You have already added this exchange.'
+                : 'Failed to add exchange. Please try again.'
           setMessage({type: 'error', text})
           return
         }
         setMessage({type: 'success', text: 'Exchange added.'})
-        setForm({name: '', url: '', api_key: '', api_secret: ''})
+        setForm({exchange_id: '', api_key: '', api_secret: ''})
       }
-      await fetchExchanges()
+      await load()
     } finally {
       setSubmitting(false)
     }
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Delete this exchange?')) return
+    if (!confirm('Remove this exchange connection?')) return
     setMessage(null)
     const res = await fetch(`/api/exchange?id=${id}`, {method: 'DELETE'})
     if (res.status === 401) {
@@ -169,13 +200,13 @@ export function ExchangesClient({locale}: Props) {
       const data = await res.json().catch(() => ({}))
       setMessage({
         type: 'error',
-        text: data?.error === 'not_found' ? 'Exchange not found.' : 'Failed to delete exchange.',
+        text: data?.error === 'not_found' ? 'Connection not found.' : 'Failed to remove.',
       })
       return
     }
-    setMessage({type: 'success', text: 'Exchange deleted.'})
+    setMessage({type: 'success', text: 'Exchange removed.'})
     if (editingId === id) setEditing(null)
-    await fetchExchanges()
+    await load()
   }
 
   return (
@@ -186,36 +217,47 @@ export function ExchangesClient({locale}: Props) {
 
       <section className="rounded-xl border border-[var(--foreground)]/15 bg-[var(--background)] p-4 sm:p-6">
         <h2 className="text-lg font-medium text-[var(--foreground)] mb-4">
-          {editingId != null ? 'Edit exchange' : 'Add exchange'}
+          {editingId != null ? 'Edit API keys' : 'Add exchange'}
         </h2>
         <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label htmlFor="name" className={`block ${labelClass} mb-1.5`}>
-              Name <span className="text-amber-600 dark:text-amber-400">*</span>
-            </label>
-            <input
-              id="name"
-              type="text"
-              required
-              value={form.name}
-              onChange={e => setForm(f => ({...f, name: e.target.value}))}
-              placeholder="e.g. Binance"
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label htmlFor="url" className={`block ${labelClass} mb-1.5`}>
-              API URL
-            </label>
-            <input
-              id="url"
-              type="url"
-              value={form.url}
-              onChange={e => setForm(f => ({...f, url: e.target.value}))}
-              placeholder="https://api.example.com"
-              className={inputClass}
-            />
-          </div>
+          {editingId == null ? (
+            <div className="sm:col-span-2">
+              <label htmlFor="exchange_id" className={`block ${labelClass} mb-1.5`}>
+                Exchange <span className="text-amber-600 dark:text-amber-400">*</span>
+              </label>
+              <select
+                id="exchange_id"
+                required
+                value={form.exchange_id === '' ? '' : String(form.exchange_id)}
+                onChange={e =>
+                  setForm(f => ({
+                    ...f,
+                    exchange_id: e.target.value === '' ? '' : Number(e.target.value),
+                  }))
+                }
+                className={inputClass}
+              >
+                <option value="">Select an exchange</option>
+                {exchangesToOffer.map(ex => (
+                  <option key={ex.id} value={ex.id}>
+                    {ex.name}
+                  </option>
+                ))}
+              </select>
+              {exchangesToOffer.length === 0 && availableExchanges.length > 0 && (
+                <p className="text-sm text-[var(--foreground)]/60 mt-1">
+                  You have already added all available exchanges.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="sm:col-span-2 text-sm text-[var(--foreground)]/70">
+              Editing connection for:{' '}
+              <strong>
+                {userExchanges.find(ue => ue.id === editingId)?.name ?? '—'}
+              </strong>
+            </div>
+          )}
           <div>
             <label htmlFor="api_key" className={`block ${labelClass} mb-1.5`}>
               API key
@@ -283,45 +325,45 @@ export function ExchangesClient({locale}: Props) {
         </h2>
         {loading ? (
           <p className="text-[var(--foreground)]/80">Loading…</p>
-        ) : exchanges.length === 0 ? (
+        ) : userExchanges.length === 0 ? (
           <p className="text-[var(--foreground)]/80">
             No exchanges yet. Add one above.
           </p>
         ) : (
           <ul className="divide-y divide-[var(--foreground)]/10 rounded-xl border border-[var(--foreground)]/15 overflow-hidden">
-            {exchanges.map(ex => (
+            {userExchanges.map(ue => (
               <li
-                key={ex.id}
+                key={ue.id}
                 className="flex flex-wrap items-center justify-between gap-3 bg-[var(--background)] px-4 py-3 sm:px-5 sm:py-4"
               >
                 <div className="min-w-0">
                   <p className="font-medium text-[var(--foreground)] truncate">
-                    {ex.name}
+                    {ue.name}
                   </p>
-                  {ex.url && (
+                  {ue.url && (
                     <p className="text-sm text-[var(--foreground)]/70 truncate">
-                      {ex.url}
+                      {ue.url}
                     </p>
                   )}
                   <p className="text-xs text-[var(--foreground)]/50 mt-0.5">
-                    {ex.hasApiKey ? 'API key set' : 'No API key'} ·{' '}
-                    {ex.hasApiSecret ? 'API secret set' : 'No API secret'}
+                    {ue.hasApiKey ? 'API key set' : 'No API key'} ·{' '}
+                    {ue.hasApiSecret ? 'API secret set' : 'No API secret'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
-                    onClick={() => setEditing(ex)}
+                    onClick={() => setEditing(ue)}
                     className="rounded-lg border border-[var(--foreground)]/20 px-3 py-1.5 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--foreground)]/5 transition focus:outline-none focus:ring-2 focus:ring-[var(--foreground)]/20"
                   >
                     Edit
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleDelete(ex.id)}
+                    onClick={() => handleDelete(ue.id)}
                     className="rounded-lg border border-red-500/40 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-500/10 transition focus:outline-none focus:ring-2 focus:ring-red-500/30"
                   >
-                    Delete
+                    Remove
                   </button>
                 </div>
               </li>

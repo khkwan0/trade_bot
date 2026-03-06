@@ -11,26 +11,25 @@ export async function GET(request: NextRequest) {
   if (!session?.user?.id) return unauthorized()
 
   const url = new URL(request.url)
-  const exchangeIdParam = url.searchParams.get('exchange_id')
-  const exchangeId =
-    exchangeIdParam != null ? parseInt(exchangeIdParam, 10) : NaN
-  if (!Number.isInteger(exchangeId)) {
-    return NextResponse.json({error: 'exchange_id required'}, {status: 400})
+  const ueIdParam = url.searchParams.get('user_exchange_id') ?? url.searchParams.get('exchange_id')
+  const userExchangeId = ueIdParam != null ? parseInt(ueIdParam, 10) : NaN
+  if (!Number.isInteger(userExchangeId)) {
+    return NextResponse.json({error: 'user_exchange_id required'}, {status: 400})
   }
 
-  const exchange = await prisma.exchanges.findFirst({
-    where: {id: exchangeId, user_id: session.user.id} as never,
+  const userExchange = await prisma.user_exchanges.findFirst({
+    where: {id: userExchangeId, user_id: session.user.id},
   })
-  if (!exchange) {
+  if (!userExchange) {
     return NextResponse.json({error: 'not_found'}, {status: 404})
   }
 
   const pairs = await prisma.pairs.findMany({
-    where: {exchange_id: exchangeId, user_id: session.user.id} as never,
+    where: {user_exchange_id: userExchangeId, user_id: session.user.id},
     orderBy: [{base_currency: 'asc'}, {quote_currency: 'asc'}],
     select: {
       id: true,
-      exchange_id: true,
+      user_exchange_id: true,
       base_currency: true,
       quote_currency: true,
       active: true,
@@ -38,7 +37,12 @@ export async function GET(request: NextRequest) {
       updated_at: true,
     },
   })
-  return NextResponse.json(pairs)
+  return NextResponse.json(
+    pairs.map(p => ({
+      ...p,
+      exchange_id: p.user_exchange_id,
+    })),
+  )
 }
 
 export async function POST(request: NextRequest) {
@@ -46,6 +50,7 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) return unauthorized()
 
   let body: {
+    user_exchange_id?: number
     exchange_id?: number
     base_currency?: string
     quote_currency?: string
@@ -56,14 +61,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({error: 'Invalid JSON'}, {status: 400})
   }
 
-  const exchangeId =
-    typeof body.exchange_id === 'number'
-      ? body.exchange_id
-      : typeof body.exchange_id === 'string'
-        ? parseInt(body.exchange_id, 10)
-        : NaN
-  if (!Number.isInteger(exchangeId)) {
-    return NextResponse.json({error: 'exchange_id required'}, {status: 400})
+  const userExchangeId =
+    typeof body.user_exchange_id === 'number'
+      ? body.user_exchange_id
+      : typeof body.exchange_id === 'number'
+        ? body.exchange_id
+        : typeof body.user_exchange_id === 'string'
+          ? parseInt(body.user_exchange_id, 10)
+          : typeof body.exchange_id === 'string'
+            ? parseInt(body.exchange_id, 10)
+            : NaN
+  if (!Number.isInteger(userExchangeId)) {
+    return NextResponse.json({error: 'user_exchange_id required'}, {status: 400})
   }
 
   const base =
@@ -81,10 +90,10 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const exchange = await prisma.exchanges.findFirst({
-    where: {id: exchangeId, user_id: session.user.id} as never,
+  const userExchange = await prisma.user_exchanges.findFirst({
+    where: {id: userExchangeId, user_id: session.user.id},
   })
-  if (!exchange) {
+  if (!userExchange) {
     return NextResponse.json({error: 'not_found'}, {status: 404})
   }
 
@@ -92,14 +101,15 @@ export async function POST(request: NextRequest) {
     const pair = await prisma.pairs.create({
       data: {
         user_id: session.user.id,
-        exchange_id: exchangeId,
+        user_exchange_id: userExchangeId,
         base_currency: base,
         quote_currency: quote,
-      } as never,
+      },
     })
     return NextResponse.json({
       id: pair.id,
-      exchange_id: pair.exchange_id,
+      exchange_id: pair.user_exchange_id,
+      user_exchange_id: pair.user_exchange_id,
       base_currency: pair.base_currency,
       quote_currency: pair.quote_currency,
       active: pair.active,
@@ -160,7 +170,7 @@ export async function PUT(request: NextRequest) {
   }
 
   const existing = await prisma.pairs.findFirst({
-    where: {id, user_id: session.user.id} as never,
+    where: {id, user_id: session.user.id},
   })
   if (!existing) {
     return NextResponse.json({error: 'not_found'}, {status: 404})
@@ -173,11 +183,12 @@ export async function PUT(request: NextRequest) {
         base_currency: base,
         quote_currency: quote,
         updated_at: new Date(),
-      } as never,
+      },
     })
     return NextResponse.json({
       id: pair.id,
-      exchange_id: pair.exchange_id,
+      exchange_id: pair.user_exchange_id,
+      user_exchange_id: pair.user_exchange_id,
       base_currency: pair.base_currency,
       quote_currency: pair.quote_currency,
       active: pair.active,
@@ -224,7 +235,7 @@ export async function DELETE(request: NextRequest) {
   }
 
   const existing = await prisma.pairs.findFirst({
-    where: {id, user_id: session.user.id} as never,
+    where: {id, user_id: session.user.id},
   })
   if (!existing) {
     return NextResponse.json({error: 'not_found'}, {status: 404})

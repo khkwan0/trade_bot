@@ -62,30 +62,27 @@ model VerificationToken {
 }
 
 model exchanges {
-  id         Int      @id @default(autoincrement())
-  user_id    String
-  name       String   @db.VarChar(255)
-  url        String?  @db.VarChar(255)
-  api_key    String?  @db.VarChar(255)
-  api_secret String?  @db.VarChar(255)
-  active     Boolean  @default(true)
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @db.Timestamptz(6)
-  pairs      pairs[]
+  id              Int             @id @default(autoincrement())
+  name            String          @db.VarChar(255)
+  url             String?         @db.VarChar(255)
+  active          Boolean         @default(true)
+  created_at      DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime        @default(now()) @db.Timestamptz(6)
+  user_exchanges  user_exchanges[]
 
-  @@unique([name, user_id])
+  @@unique([name])
 }
 
 model pairs {
   id             Int       @id @default(autoincrement())
-  exchange_id    Int
+  user_exchange_id    Int
   user_id        String
   base_currency  String    @db.VarChar(255)
   quote_currency String    @db.VarChar(255)
   active         Boolean   @default(true)
   created_at     DateTime  @default(now()) @db.Timestamptz(6)
   updated_at     DateTime  @default(now()) @db.Timestamptz(6)
-  exchanges      exchanges @relation(fields: [exchange_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_exchanges      user_exchanges @relation(fields: [user_exchange_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model preferences {
@@ -127,7 +124,21 @@ model contracts {
 }
 
 model whitelist {
+  id         Int      @id @default(autoincrement())
   email      String   @unique 
   created_at DateTime @default(now()) @db.Timestamptz(6)
   updated_at DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model user_exchanges {
+  id          Int        @id @default(autoincrement())
+  user_id     String
+  exchange_id Int
+  api_key     String?    @db.VarChar(255)
+  api_secret  String?    @db.VarChar(255)
+  active      Boolean    @default(true)
+  created_at  DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime   @default(now()) @db.Timestamptz(6)
+  exchange    exchanges  @relation(fields: [exchange_id], references: [id])
+  pairs       pairs[]
 }

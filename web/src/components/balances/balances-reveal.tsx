@@ -27,8 +27,7 @@ function EyeIcon({className}: {className?: string}) {
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
-      aria-hidden
-    >
+      aria-hidden>
       <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
       <circle cx="12" cy="12" r="3" />
     </svg>
@@ -48,8 +47,7 @@ function EyeOffIcon({className}: {className?: string}) {
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
-      aria-hidden
-    >
+      aria-hidden>
       <path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" />
       <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" />
       <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" />
@@ -69,11 +67,10 @@ export function BalancesReveal({entries}: Props) {
         </h2>
         <button
           type="button"
-          onClick={() => setVisible((v) => !v)}
+          onClick={() => setVisible(v => !v)}
           className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-[var(--foreground)] bg-[var(--muted)] hover:bg-[var(--muted)]/80 border border-[var(--border)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
           aria-expanded={visible}
-          aria-label={visible ? 'Hide balances' : 'Show balances'}
-        >
+          aria-label={visible ? 'Hide balances' : 'Show balances'}>
           {visible ? (
             <>
               <EyeOffIcon />
@@ -92,12 +89,10 @@ export function BalancesReveal({entries}: Props) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {entries.map(([exchangeName, balances]) => {
             const tokenEntries = Object.entries(balances)
-            if (tokenEntries.length === 0) return null
             return (
               <div
                 key={exchangeName}
-                className="rounded-lg border border-[var(--border)] overflow-hidden"
-              >
+                className="rounded-lg border border-[var(--border)] overflow-hidden">
                 <div className="px-4 py-2 bg-[var(--muted)] font-medium text-[var(--foreground)] capitalize">
                   {exchangeName}
                 </div>
@@ -117,11 +112,19 @@ export function BalancesReveal({entries}: Props) {
                       </tr>
                     </thead>
                     <tbody>
+                      {tokenEntries.length === 0 && (
+                        <tr>
+                          <td
+                            colSpan={3}
+                            className="px-4 py-2 text-center text-[var(--muted-foreground)]">
+                            No balances found (Maybe check API keys?)
+                          </td>
+                        </tr>
+                      )}
                       {tokenEntries.map(([token, balance]) => (
                         <tr
                           key={token}
-                          className="border-b border-[var(--border)] last:border-0"
-                        >
+                          className="border-b border-[var(--border)] last:border-0">
                           <td className="px-4 py-2 font-medium text-[var(--foreground)]">
                             {token.toUpperCase()}
                           </td>
@@ -143,8 +146,7 @@ export function BalancesReveal({entries}: Props) {
       ) : (
         <div
           className="rounded-lg border border-[var(--border)] px-4 py-6 text-center text-sm text-[var(--muted-foreground)]"
-          aria-hidden
-        >
+          aria-hidden>
           Click Show to reveal your balances
         </div>
       )}

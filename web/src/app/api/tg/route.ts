@@ -22,6 +22,10 @@ async function sendTelegramMessage(
       ...(parseMode && {parse_mode: parseMode}),
     }),
   })
+  if (!res.ok) {
+    logger.error('Failed to send Telegram message: ' + res.statusText)
+    return
+  }
   const json = await res.json()
   if (ttl) {
     setTimeout(() => {

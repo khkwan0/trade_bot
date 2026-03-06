@@ -22,6 +22,7 @@ const links = [
 const adminLinks = [
   {href: 'users', label: 'Users'},
   {href: 'whitelist', label: 'Whitelist'},
+  {href: 'exchanges', label: 'Exchanges'},
 ] as const
 
 export default function Nav({locale, show, isAdmin = false}: Props) {
@@ -43,7 +44,8 @@ export default function Nav({locale, show, isAdmin = false}: Props) {
 
   if (!show) return null
 
-  const isAdminActive = pathname.startsWith(adminBase + '/') || pathname === adminBase
+  const isAdminActive =
+    pathname.startsWith(adminBase + '/') || pathname === adminBase
 
   return (
     <nav
@@ -72,7 +74,7 @@ export default function Nav({locale, show, isAdmin = false}: Props) {
         <div className="relative" ref={menuRef}>
           <button
             type="button"
-            onClick={() => setAdminOpen((o) => !o)}
+            onClick={() => setAdminOpen(o => !o)}
             aria-expanded={adminOpen}
             aria-haspopup="true"
             className={`rounded-lg px-3 py-2 min-h-[44px] inline-flex items-center text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--foreground)] focus:ring-offset-2 focus:ring-offset-[var(--background)] [touch-action:manipulation] ${
@@ -87,7 +89,12 @@ export default function Nav({locale, show, isAdmin = false}: Props) {
               stroke="currentColor"
               viewBox="0 0 24 24"
               aria-hidden>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </button>
           {adminOpen && (
@@ -96,7 +103,8 @@ export default function Nav({locale, show, isAdmin = false}: Props) {
               role="menu">
               {adminLinks.map(({href, label}) => {
                 const path = `${adminBase}/${href}`
-                const isActive = pathname === path || pathname.startsWith(path + '/')
+                const isActive =
+                  pathname === path || pathname.startsWith(path + '/')
                 return (
                   <li key={href} role="none">
                     <Link

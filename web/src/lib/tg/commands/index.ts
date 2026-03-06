@@ -1,5 +1,5 @@
-import {GetExchangesByUserId} from '@/lib/exchanges'
-import {ExchangeInfo} from '@/types/exchange-info'
+import {GetUserExchangesByUserId} from '@/lib/exchanges'
+import {UserExchangeInfo} from '@/types/exchange-info'
 
 export type CommandResponse = {
   text: string
@@ -29,11 +29,11 @@ export const StartCommand = (): CommandResponse => {
 }
 
 async function PricesCommand(userId: string): Promise<CommandResponse> {
-  const exchanges = await GetExchangesByUserId(userId)
+  const exchanges = await GetUserExchangesByUserId(userId)
   const buttons: {text: string; callback_data: string}[] = exchanges.map(
-    (exchange: ExchangeInfo) => ({
-      text: exchange.name,
-      callback_data: `prices:${exchange.id}`,
+    (exchange: UserExchangeInfo) => ({
+      text: exchange.exchange_name,
+      callback_data: `prices:${exchange.exchange_id}`,
     }),
   )
   buttons.push({text: 'All', callback_data: 'prices:all'})
@@ -47,11 +47,11 @@ async function PricesCommand(userId: string): Promise<CommandResponse> {
 }
 
 async function BalancesCommand(userId: string): Promise<CommandResponse> {
-  const exchanges = await GetExchangesByUserId(userId)
-  const buttons: {text: string; callback_data: string}[] = exchanges.map(
-    (exchange: ExchangeInfo) => ({
-      text: exchange.name,
-      callback_data: `balances:${exchange.id}`,
+  const userExchanges = await GetUserExchangesByUserId(userId)
+  const buttons: {text: string; callback_data: string}[] = userExchanges.map(
+    (userExchange: UserExchangeInfo) => ({
+      text: userExchange.exchange_name,
+      callback_data: `balances:${userExchange.exchange_id}`,
     }),
   )
   buttons.push({text: 'All', callback_data: 'balances:all'})

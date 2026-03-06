@@ -6,40 +6,37 @@ function unauthorized() {
   return NextResponse.json({error: 'Unauthorized'}, {status: 401})
 }
 
+/** List current user's exchange connections (user_exchanges) with exchange name. */
 export async function GET() {
   const session = await auth()
   if (!session?.user?.id) return unauthorized()
 
-  const exchanges = await prisma.exchanges.findMany({
-    where: {user_id: session.user.id} as never,
-    orderBy: {name: 'asc'},
-    select: {
-      id: true,
-      name: true,
-      url: true,
-      api_key: true,
-      api_secret: true,
-      active: true,
-      created_at: true,
-      updated_at: true,
+  const rows = await prisma.user_exchanges.findMany({
+    where: {user_id: session.user.id},
+    orderBy: {exchange: {name: 'asc'}},
+    include: {
+      exchange: {select: {id: true, name: true, url: true}},
     },
   })
   return NextResponse.json(
-    exchanges.map(({api_key, api_secret, ...rest}) => ({
+    rows.map(({api_key, api_secret, exchange, ...rest}) => ({
       ...rest,
+      exchange_id: exchange.id,
+      name: exchange.name,
+      url: exchange.url ?? null,
       hasApiKey: Boolean(api_key),
       hasApiSecret: Boolean(api_secret),
     })),
   )
 }
 
+/** Create a user_exchange: link user to an exchange and optionally set API key/secret. */
 export async function POST(request: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return unauthorized()
 
   let body: {
-    name?: string
-    url?: string | null
+    exchange_id?: number
     api_key?: string | null
     api_secret?: string | null
   }
@@ -48,62 +45,75 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({error: 'Invalid JSON'}, {status: 400})
   }
-  const name = typeof body.name === 'string' ? body.name.trim() : ''
-  if (!name) {
-    return NextResponse.json({error: 'name_required'}, {status: 400})
+  const exchangeId =
+    typeof body.exchange_id === 'number'
+      ? body.exchange_id
+      : typeof body.exchange_id === 'string'
+        ? parseInt(body.exchange_id, 10)
+        : NaN
+  if (!Number.isInteger(exchangeId)) {
+    return NextResponse.json({error: 'exchange_id_required'}, {status: 400})
   }
-  const url = typeof body.url === 'string' ? body.url.trim() || null : null
   const apiKey =
     typeof body.api_key === 'string' ? body.api_key.trim() || null : null
   const apiSecret =
     typeof body.api_secret === 'string' ? body.api_secret.trim() || null : null
+
+  const exchange = await prisma.exchanges.findFirst({
+    where: {id: exchangeId, active: true},
+  })
+  if (!exchange) {
+    return NextResponse.json({error: 'exchange_not_found'}, {status: 404})
+  }
+
   try {
-    const exchange = await prisma.exchanges.create({
+    const userExchange = await prisma.user_exchanges.create({
       data: {
         user_id: session.user.id,
-        name,
-        // Use '' for url when empty so DB works when column is still NOT NULL (migration not applied)
-        url: url && url.length > 0 ? url : '',
-        api_key: apiKey ?? null,
-        api_secret: apiSecret ?? null,
-      } as unknown as Parameters<typeof prisma.exchanges.create>[0]['data'],
+        exchange_id: exchangeId,
+        api_key: apiKey,
+        api_secret: apiSecret,
+      },
+      include: {
+        exchange: {select: {id: true, name: true, url: true}},
+      },
     })
+    const {api_key, api_secret, exchange: ex} = userExchange
     return NextResponse.json({
-      id: exchange.id,
-      name: exchange.name,
-      url: exchange.url,
-      hasApiKey: Boolean(exchange.api_key),
-      hasApiSecret: Boolean(exchange.api_secret),
-      active: exchange.active,
-      created_at: exchange.created_at,
-      updated_at: exchange.updated_at,
+      id: userExchange.id,
+      exchange_id: ex.id,
+      name: ex.name,
+      url: ex.url ?? null,
+      hasApiKey: Boolean(api_key),
+      hasApiSecret: Boolean(api_secret),
+      active: userExchange.active,
+      created_at: userExchange.created_at,
+      updated_at: userExchange.updated_at,
     })
   } catch (e: unknown) {
-    console.log(e)
     const isUnique =
       e &&
       typeof e === 'object' &&
       'code' in e &&
       (e as {code: string}).code === 'P2002'
-    const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json(
       {
-        error: isUnique ? 'duplicate_name' : 'create_failed',
-        ...(process.env.NODE_ENV === 'development' && {details: message}),
+        error: isUnique ? 'already_connected' : 'create_failed',
+        ...(process.env.NODE_ENV === 'development' &&
+          e instanceof Error && {details: e.message}),
       },
       {status: 400},
     )
   }
 }
 
+/** Update a user_exchange (API key/secret only). */
 export async function PUT(request: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return unauthorized()
 
   let body: {
     id?: number
-    name?: string
-    url?: string | null
     api_key?: string | null
     api_secret?: string | null
   }
@@ -121,59 +131,47 @@ export async function PUT(request: NextRequest) {
   if (!Number.isInteger(id)) {
     return NextResponse.json({error: 'Invalid id'}, {status: 400})
   }
-  const name = typeof body.name === 'string' ? body.name.trim() : ''
-  if (!name) {
-    return NextResponse.json({error: 'name_required'}, {status: 400})
-  }
-  const url = typeof body.url === 'string' ? body.url.trim() || null : undefined
   const apiKey =
     typeof body.api_key === 'string' ? body.api_key.trim() : undefined
   const apiSecret =
     typeof body.api_secret === 'string' ? body.api_secret.trim() : undefined
 
-  const existing = await prisma.exchanges.findFirst({
-    where: {id, user_id: session.user.id} as never,
+  const existing = await prisma.user_exchanges.findFirst({
+    where: {id, user_id: session.user.id},
+    include: {exchange: {select: {id: true, name: true, url: true}}},
   })
   if (!existing) {
     return NextResponse.json({error: 'not_found'}, {status: 404})
   }
 
-  const data = {
-    name,
-    ...(url !== undefined && {url: url || null}),
-    ...(apiKey !== undefined && {api_key: apiKey || null}),
-    ...(apiSecret !== undefined && {api_secret: apiSecret || null}),
-    updated_at: new Date(),
-  } as unknown as Parameters<typeof prisma.exchanges.update>[0]['data']
+  const data: {
+    api_key?: string | null
+    api_secret?: string | null
+    updated_at: Date
+  } = {updated_at: new Date()}
+  if (apiKey !== undefined) data.api_key = apiKey || null
+  if (apiSecret !== undefined) data.api_secret = apiSecret || null
 
-  try {
-    const exchange = await prisma.exchanges.update({
-      where: {id},
-      data,
-    })
-    return NextResponse.json({
-      id: exchange.id,
-      name: exchange.name,
-      url: exchange.url,
-      hasApiKey: Boolean(exchange.api_key),
-      hasApiSecret: Boolean(exchange.api_secret),
-      active: exchange.active,
-      created_at: exchange.created_at,
-      updated_at: exchange.updated_at,
-    })
-  } catch (e: unknown) {
-    const isUnique =
-      e &&
-      typeof e === 'object' &&
-      'code' in e &&
-      (e as {code: string}).code === 'P2002'
-    return NextResponse.json(
-      {error: isUnique ? 'duplicate_name' : 'update_failed'},
-      {status: 400},
-    )
-  }
+  const updated = await prisma.user_exchanges.update({
+    where: {id},
+    data,
+    include: {exchange: {select: {id: true, name: true, url: true}}},
+  })
+  const {api_key, api_secret, exchange: ex} = updated
+  return NextResponse.json({
+    id: updated.id,
+    exchange_id: ex.id,
+    name: ex.name,
+    url: ex.url ?? null,
+    hasApiKey: Boolean(api_key),
+    hasApiSecret: Boolean(api_secret),
+    active: updated.active,
+    created_at: updated.created_at,
+    updated_at: updated.updated_at,
+  })
 }
 
+/** Delete a user_exchange. */
 export async function DELETE(request: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return unauthorized()
@@ -200,12 +198,12 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({error: 'Invalid id'}, {status: 400})
   }
 
-  const existing = await prisma.exchanges.findFirst({
-    where: {id, user_id: session.user.id} as never,
+  const existing = await prisma.user_exchanges.findFirst({
+    where: {id, user_id: session.user.id},
   })
   if (!existing) {
     return NextResponse.json({error: 'not_found'}, {status: 404})
   }
-  await prisma.exchanges.delete({where: {id}})
+  await prisma.user_exchanges.delete({where: {id}})
   return NextResponse.json({ok: true})
 }

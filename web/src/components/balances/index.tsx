@@ -1,6 +1,6 @@
 import {
-  GetExchangesByUserId,
-  FetchBalancesFromExchange,
+  GetUserExchangesByUserId,
+  FetchBalancesFromUserExchanges,
 } from '@/lib/exchanges'
 import type {Balance} from '@/types/exchange-info'
 import {BalancesReveal} from './balances-reveal'
@@ -18,7 +18,7 @@ export default async function Balances({userId}: Props) {
     )
   }
 
-  const exchanges = await GetExchangesByUserId(userId)
+  const exchanges = await GetUserExchangesByUserId(userId)
   if (exchanges.length === 0) {
     return (
       <section className="mt-6">
@@ -32,7 +32,7 @@ export default async function Balances({userId}: Props) {
     )
   }
 
-  const balancesByExchange = await FetchBalancesFromExchange(exchanges)
+  const balancesByExchange = await FetchBalancesFromUserExchanges(exchanges)
   const entries = Object.entries(balancesByExchange).filter(
     (entry): entry is [string, Record<string, Balance>] => entry[1] != null,
   )

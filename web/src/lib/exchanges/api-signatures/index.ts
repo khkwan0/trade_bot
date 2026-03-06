@@ -18,10 +18,7 @@ function getKrakenSignature(
   ).toString()
   const encoded = data.nonce + encodedPayload
   const sha256Hash = crypto.createHash('sha256').update(encoded).digest()
-  const message = Buffer.concat([
-    Buffer.from(urlPath, 'utf8'),
-    sha256Hash,
-  ])
+  const message = Buffer.concat([Buffer.from(urlPath, 'utf8'), sha256Hash])
   const secretBuffer = Buffer.from(secret, 'base64')
   const hmac = crypto.createHmac('sha512', secretBuffer)
   hmac.update(message)
@@ -59,9 +56,9 @@ export default {
     apiSecret: string,
     path: string,
     postData: Record<string, string | number> = {},
-  ): Promise<Record<string, string> & { body: string }> {
+  ): Promise<Record<string, string> & {body: string}> {
     const nonce = Date.now().toString()
-    const data = { nonce, ...postData }
+    const data = {nonce, ...postData}
     const encodedPayload = new URLSearchParams(
       Object.fromEntries(
         Object.entries(data).map(([k, v]) => [k, String(v)]),
