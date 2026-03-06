@@ -19,6 +19,13 @@ export const {handlers, auth, signIn, signOut} = NextAuth({
       if (!user.email) {
         return false
       }
+      const email = user.email.toLowerCase()
+      const onWhitelist = await prisma.whitelist.findUnique({
+        where: {email},
+      })
+      if (!onWhitelist) {
+        return false
+      }
       const dbUser = await prisma.user.findUnique({
         where: {email: user.email},
       })
