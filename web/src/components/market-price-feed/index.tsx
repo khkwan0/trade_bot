@@ -25,6 +25,10 @@ async function fetchFeed(): Promise<FeedData> {
   return (await res.json()) as FeedData
 }
 
+function displayName(key: string): string {
+  return key.charAt(0).toUpperCase() + key.slice(1).toLowerCase()
+}
+
 export default function MarketPriceFeed({
   userExchanges = [],
   feedData: initialFeedData = {},
@@ -36,24 +40,29 @@ export default function MarketPriceFeed({
   const params = useParams()
   const locale = (params?.locale as string) ?? 'en'
 
-  const exchangeColumns = userExchanges.map(ex => ({
-    key: ex.name.toLowerCase(),
-    displayName: ex.name,
+  // Columns and pairs driven by what the feed returns
+  const exchangeColumns = Object.keys(feedData).map(key => ({
+    key,
+    displayName: displayName(key),
   }))
-  const bitkubUsdcPairs = feedData.bitkub?.data
-    ? Object.keys(feedData.bitkub.data).filter(p => p.endsWith('_USDC'))
-    : []
   const sortedPairs = Array.from(
-    new Set([
-      ...userExchanges.flatMap(ex => ex.pairSymbols),
-      ...bitkubUsdcPairs,
-    ]),
+    new Set(
+      exchangeColumns.flatMap(({key}) =>
+        feedData[key]?.data ? Object.keys(feedData[key].data!) : [],
+      ),
+    ),
   ).sort()
+
+  const hasDataForColumn = (key: string): boolean => {
+    const entry = feedData[key]
+    if (entry?.error) return false
+    const data = entry?.data
+    return Boolean(data && Object.keys(data).length > 0)
+  }
 
   const exchangeKeys = exchangeColumns.map(c => c.key).join(',')
 
   useEffect(() => {
-    //    if (exchangeColumns.length === 0) return
     const tick = async () => {
       const data = await fetchFeed()
       setFeedData(data)
@@ -64,14 +73,6 @@ export default function MarketPriceFeed({
   }, [exchangeKeys])
 
   const errors = exchangeColumns.filter(c => feedData[c.key]?.error)
-
-  if (exchangeColumns.length < 3) {
-    exchangeColumns.push({
-      key: 'binance',
-      displayName: 'Binance',
-    })
-  }
-  console.log('feeddata', feedData)
 
   return (
     <section className="mt-6 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
@@ -108,41 +109,50 @@ export default function MarketPriceFeed({
                 </tr>
               </thead>
               <tbody className="text-[var(--foreground)]">
-                {sortedPairs.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={exchangeColumns.length + 1}
-                      className="py-4 text-center text-[var(--muted-foreground)]">
-                      No pairs configured.{' '}
-                      <Link
-                        href={`/${locale}/dashboard/pairs`}
-                        className="text-[var(--primary)] underline underline-offset-2 hover:no-underline">
-                        Add pairs
-                      </Link>{' '}
-                      to your exchanges.
+                {/* One row: for each column with no data, show the blurb in that column */}
+                {exchangeColumns.some(c => !hasDataForColumn(c.key)) && (
+                  <tr className="border-b border-[var(--border)]">
+                    <td className="py-2 pr-4 font-medium text-[var(--muted-foreground)]">
+                      —
                     </td>
+                    {exchangeColumns.map(({key}) => (
+                      <td key={key} className="py-2 pr-4 last:pr-0">
+                        {hasDataForColumn(key) ? (
+                          '—'
+                        ) : (
+                          <span className="text-[var(--muted-foreground)]">
+                            No pairs configured.{' '}
+                            <Link
+                              href={`/${locale}/dashboard/pairs`}
+                              className="text-[var(--primary)] underline underline-offset-2 hover:no-underline">
+                              Add pairs
+                            </Link>{' '}
+                            to your exchanges.
+                          </span>
+                        )}
+                      </td>
+                    ))}
                   </tr>
-                ) : (
-                  sortedPairs.map(pair => (
-                    <tr
-                      key={pair}
-                      className="border-b border-[var(--border)] last:border-0">
-                      <td className="py-2 pr-4 font-medium">{pair}</td>
-                      {exchangeColumns.map(({key}) => {
-                        const entry = feedData[key]
-                        return (
-                          <td key={key} className="py-2 pr-4 last:pr-0">
-                            {entry?.error
-                              ? '—'
-                              : entry?.data?.[pair] != null
-                                ? formatPrice(entry.data[pair])
-                                : '—'}
-                          </td>
-                        )
-                      })}
-                    </tr>
-                  ))
                 )}
+                {sortedPairs.map(pair => (
+                  <tr
+                    key={pair}
+                    className="border-b border-[var(--border)] last:border-0">
+                    <td className="py-2 pr-4 font-medium">{pair}</td>
+                    {exchangeColumns.map(({key}) => {
+                      const entry = feedData[key]
+                      return (
+                        <td key={key} className="py-2 pr-4 last:pr-0">
+                          {entry?.error
+                            ? '—'
+                            : entry?.data?.[pair] != null
+                              ? formatPrice(entry.data[pair])
+                              : '—'}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

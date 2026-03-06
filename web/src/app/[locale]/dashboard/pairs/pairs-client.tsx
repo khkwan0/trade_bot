@@ -46,6 +46,29 @@ export function PairsClient({locale}: Props) {
     base_currency: '',
     quote_currency: '',
   })
+  const [baseSymbols, setBaseSymbols] = useState<string[]>([])
+  const [quoteSymbols, setQuoteSymbols] = useState<string[]>([])
+  const [loadingSymbols, setLoadingSymbols] = useState(false)
+
+  const fetchSymbolsForExchange = useCallback(async (exchangeName: string) => {
+    if (!exchangeName.trim()) return
+    setLoadingSymbols(true)
+    setBaseSymbols([])
+    setQuoteSymbols([])
+    try {
+      const res = await fetch(`/api/symbols?exchange=${encodeURIComponent(exchangeName)}`)
+      if (res.status === 401) {
+        router.push(`/${locale}`)
+        return
+      }
+      if (!res.ok) return
+      const data = await res.json()
+      if (Array.isArray(data.bases)) setBaseSymbols(data.bases)
+      if (Array.isArray(data.quotes)) setQuoteSymbols(data.quotes)
+    } finally {
+      setLoadingSymbols(false)
+    }
+  }, [locale, router])
 
   const fetchPairs = useCallback(async (exchangeId: number) => {
     setLoadingPairs(true)
@@ -102,11 +125,20 @@ export function PairsClient({locale}: Props) {
 
   const selectedExchange = exchanges.find(e => e.id === selectedExchangeId) ?? null
   const isJupiter = selectedExchange?.name?.toLowerCase() === 'jupiter'
+  const isBitkub = selectedExchange?.name?.toLowerCase() === 'bitkub'
+  const isKraken = selectedExchange?.name?.toLowerCase() === 'kraken'
+
+  useEffect(() => {
+    if (isKraken && selectedExchange?.name) {
+      fetchSymbolsForExchange(selectedExchange.name)
+    }
+  }, [isKraken, selectedExchange?.name, fetchSymbolsForExchange])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const base = form.base_currency.trim().toUpperCase()
-    const quote = isJupiter ? 'USD' : form.quote_currency.trim().toUpperCase()
+    const quote =
+      isJupiter ? 'USD' : isBitkub ? 'THB' : form.quote_currency.trim().toUpperCase()
     if (!base || !quote) {
       setMessage({type: 'error', text: 'Base and quote currency are required.'})
       return
@@ -260,28 +292,58 @@ export function PairsClient({locale}: Props) {
               id="base_currency"
               value={form.base_currency}
               onChange={e => setForm(f => ({...f, base_currency: e.target.value}))}
+              onFocus={() => {
+                if (selectedExchange?.name) fetchSymbolsForExchange(selectedExchange.name)
+              }}
               type="text"
               required
-              placeholder="e.g. BTC"
+              placeholder={loadingSymbols ? 'Loading symbols…' : 'e.g. BTC'}
               className={inputClass}
               autoComplete="off"
+              list="base_currency_list"
             />
+            <datalist id="base_currency_list">
+              {baseSymbols.map(s => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
           </div>
           <div>
             <label htmlFor="quote_currency" className={`block ${labelClass} mb-1.5`}>
               Quote currency <span className="text-amber-600 dark:text-amber-400">*</span>
             </label>
-            <input
-              id="quote_currency"
-              value={isJupiter ? 'USD' : form.quote_currency}
-              onChange={e => setForm(f => ({...f, quote_currency: e.target.value}))}
-              type="text"
-              required={!isJupiter}
-              placeholder={isJupiter ? undefined : 'e.g. USDT'}
-              className={inputClass}
-              autoComplete="off"
-              disabled={isJupiter}
-            />
+            {isKraken ? (
+              <select
+                id="quote_currency"
+                value={form.quote_currency}
+                onChange={e => setForm(f => ({...f, quote_currency: e.target.value}))}
+                required
+                disabled={loadingSymbols}
+                className={`${inputClass} cursor-pointer max-w-xs`}
+                aria-label="Select quote currency"
+              >
+                <option value="">
+                  {loadingSymbols ? 'Loading…' : 'Choose quote currency'}
+                </option>
+                {quoteSymbols.map(s => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                id="quote_currency"
+                value={isJupiter ? 'USD' : isBitkub ? 'THB' : form.quote_currency}
+                onChange={e => setForm(f => ({...f, quote_currency: e.target.value}))}
+                type="text"
+                required={!isJupiter && !isBitkub}
+                placeholder={isJupiter || isBitkub ? undefined : 'e.g. USDT'}
+                className={inputClass}
+                autoComplete="off"
+                disabled={isJupiter || isBitkub}
+              />
+            )}
           </div>
           <div className="sm:col-span-2 flex flex-wrap gap-2">
             <button
