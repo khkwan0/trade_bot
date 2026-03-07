@@ -25,6 +25,7 @@ function getKrakenSignature(
   return hmac.digest('base64')
 }
 
+
 export default {
   bitkub: async function (
     apiKey: string,
