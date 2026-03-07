@@ -1,6 +1,7 @@
 import {auth} from '@/auth'
 import MarketPriceFeed from '@/components/market-price-feed'
 import Balances from '@/components/balances'
+import OpenOrders from '@/components/open-orders'
 import {prisma} from '@/lib/prisma'
 import Prices from '@/lib/exchanges/prices'
 
@@ -53,6 +54,7 @@ export default async function DashboardPage() {
       <h1 className="text-2xl sm:text-3xl font-semibold text-[var(--foreground)]">
         Dashboard
       </h1>
+      <OpenOrders userId={userId} />
       <Balances userId={userId} />
       <MarketPriceFeed userExchanges={feedProps} feedData={feedData} />
     </div>

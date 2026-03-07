@@ -66,6 +66,8 @@ type UserExchangeWithExchange = {
   exchange_id: number
   api_key: string | null
   api_secret: string | null
+  maker_fee: number
+  taker_fee: number
   active: boolean
   created_at: Date
   updated_at: Date

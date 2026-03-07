@@ -15,7 +15,6 @@ export const {handlers, auth, signIn, signOut} = NextAuth({
   },
   callbacks: {
     signIn: async ({user}): Promise<boolean> => {
-      console.log('signIn', user)
       if (!user.email) {
         return false
       }

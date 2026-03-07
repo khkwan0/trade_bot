@@ -61,6 +61,5 @@ export async function GET() {
     ])
     feeds['binance'] = {data: binanceData, error: null}
   }
-  console.log('feeds', feeds)
   return NextResponse.json(feeds)
 }

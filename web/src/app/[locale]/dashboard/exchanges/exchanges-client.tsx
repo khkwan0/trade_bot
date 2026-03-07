@@ -16,6 +16,8 @@ export type UserExchangeItem = {
   url: string | null
   hasApiKey: boolean
   hasApiSecret: boolean
+  maker_fee: number
+  taker_fee: number
   active: boolean
   created_at: string
   updated_at: string
@@ -41,6 +43,8 @@ export function ExchangesClient({locale}: Props) {
     exchange_id: '' as number | '',
     api_key: '',
     api_secret: '',
+    maker_fee: '',
+    taker_fee: '',
   })
 
   const fetchAvailable = async () => {
@@ -120,6 +124,8 @@ export function ExchangesClient({locale}: Props) {
       exchange_id: ue?.exchange_id ?? '',
       api_key: '',
       api_secret: '',
+      maker_fee: ue != null ? String(ue.maker_fee) : '',
+      taker_fee: ue != null ? String(ue.taker_fee) : '',
     })
     setMessage(null)
   }
@@ -130,6 +136,10 @@ export function ExchangesClient({locale}: Props) {
     setSubmitting(true)
     try {
       if (editingId != null) {
+        const makerFeeNum =
+          form.maker_fee === '' ? undefined : parseFloat(form.maker_fee)
+        const takerFeeNum =
+          form.taker_fee === '' ? undefined : parseFloat(form.taker_fee)
         const res = await fetch('/api/exchange', {
           method: 'PUT',
           headers: {'Content-Type': 'application/json'},
@@ -137,6 +147,10 @@ export function ExchangesClient({locale}: Props) {
             id: editingId,
             ...(form.api_key !== '' && {api_key: form.api_key}),
             ...(form.api_secret !== '' && {api_secret: form.api_secret}),
+            ...(makerFeeNum !== undefined &&
+              Number.isFinite(makerFeeNum) && {maker_fee: makerFeeNum}),
+            ...(takerFeeNum !== undefined &&
+              Number.isFinite(takerFeeNum) && {taker_fee: takerFeeNum}),
           }),
         })
         const data = await res.json()
@@ -149,15 +163,25 @@ export function ExchangesClient({locale}: Props) {
           setMessage({type: 'error', text})
           return
         }
-        setMessage({type: 'success', text: 'API keys updated.'})
+        setMessage({type: 'success', text: 'API keys and fees updated.'})
         setEditing(null)
-        setForm({exchange_id: '', api_key: '', api_secret: ''})
+        setForm({
+          exchange_id: '',
+          api_key: '',
+          api_secret: '',
+          maker_fee: '',
+          taker_fee: '',
+        })
       } else {
         const exchangeId = form.exchange_id === '' ? NaN : Number(form.exchange_id)
         if (!Number.isInteger(exchangeId)) {
           setMessage({type: 'error', text: 'Please select an exchange.'})
           return
         }
+        const makerFeeNum =
+          form.maker_fee === '' ? 0 : parseFloat(form.maker_fee)
+        const takerFeeNum =
+          form.taker_fee === '' ? 0 : parseFloat(form.taker_fee)
         const res = await fetch('/api/exchange', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -165,6 +189,8 @@ export function ExchangesClient({locale}: Props) {
             exchange_id: exchangeId,
             api_key: form.api_key.trim() || null,
             api_secret: form.api_secret.trim() || null,
+            maker_fee: Number.isFinite(makerFeeNum) ? makerFeeNum : 0,
+            taker_fee: Number.isFinite(takerFeeNum) ? takerFeeNum : 0,
           }),
         })
         const data = await res.json()
@@ -180,7 +206,13 @@ export function ExchangesClient({locale}: Props) {
           return
         }
         setMessage({type: 'success', text: 'Exchange added.'})
-        setForm({exchange_id: '', api_key: '', api_secret: ''})
+        setForm({
+          exchange_id: '',
+          api_key: '',
+          api_secret: '',
+          maker_fee: '',
+          taker_fee: '',
+        })
       }
       await load()
     } finally {
@@ -286,6 +318,38 @@ export function ExchangesClient({locale}: Props) {
               className={inputClass}
             />
           </div>
+          <div>
+            <label htmlFor="maker_fee" className={`block ${labelClass} mb-1.5`}>
+              Maker fee
+            </label>
+            <input
+              id="maker_fee"
+              type="number"
+              min={0}
+              max={1}
+              step={0.0001}
+              value={form.maker_fee}
+              onChange={e => setForm(f => ({...f, maker_fee: e.target.value}))}
+              placeholder="e.g. 0.001 for 0.1%"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="taker_fee" className={`block ${labelClass} mb-1.5`}>
+              Taker fee
+            </label>
+            <input
+              id="taker_fee"
+              type="number"
+              min={0}
+              max={1}
+              step={0.0001}
+              value={form.taker_fee}
+              onChange={e => setForm(f => ({...f, taker_fee: e.target.value}))}
+              placeholder="e.g. 0.001 for 0.1%"
+              className={inputClass}
+            />
+          </div>
           <div className="sm:col-span-2 flex flex-wrap gap-2">
             <button
               type="submit"
@@ -348,6 +412,9 @@ export function ExchangesClient({locale}: Props) {
                   <p className="text-xs text-[var(--foreground)]/50 mt-0.5">
                     {ue.hasApiKey ? 'API key set' : 'No API key'} ·{' '}
                     {ue.hasApiSecret ? 'API secret set' : 'No API secret'}
+                    {' · '}
+                    Maker: {(ue.maker_fee * 100).toFixed(2)}% · Taker:{' '}
+                    {(ue.taker_fee * 100).toFixed(2)}%
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

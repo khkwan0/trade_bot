@@ -39,6 +39,8 @@ export async function POST(request: NextRequest) {
     exchange_id?: number
     api_key?: string | null
     api_secret?: string | null
+    maker_fee?: number
+    taker_fee?: number
   }
   try {
     body = await request.json()
@@ -58,6 +60,14 @@ export async function POST(request: NextRequest) {
     typeof body.api_key === 'string' ? body.api_key.trim() || null : null
   const apiSecret =
     typeof body.api_secret === 'string' ? body.api_secret.trim() || null : null
+  const makerFee =
+    typeof body.maker_fee === 'number' && Number.isFinite(body.maker_fee)
+      ? Math.max(0, Math.min(1, body.maker_fee))
+      : 0
+  const takerFee =
+    typeof body.taker_fee === 'number' && Number.isFinite(body.taker_fee)
+      ? Math.max(0, Math.min(1, body.taker_fee))
+      : 0
 
   const exchange = await prisma.exchanges.findFirst({
     where: {id: exchangeId, active: true},
@@ -73,6 +83,8 @@ export async function POST(request: NextRequest) {
         exchange_id: exchangeId,
         api_key: apiKey,
         api_secret: apiSecret,
+        maker_fee: makerFee,
+        taker_fee: takerFee,
       },
       include: {
         exchange: {select: {id: true, name: true, url: true}},
@@ -86,6 +98,8 @@ export async function POST(request: NextRequest) {
       url: ex.url ?? null,
       hasApiKey: Boolean(api_key),
       hasApiSecret: Boolean(api_secret),
+      maker_fee: userExchange.maker_fee,
+      taker_fee: userExchange.taker_fee,
       active: userExchange.active,
       created_at: userExchange.created_at,
       updated_at: userExchange.updated_at,
@@ -116,6 +130,8 @@ export async function PUT(request: NextRequest) {
     id?: number
     api_key?: string | null
     api_secret?: string | null
+    maker_fee?: number
+    taker_fee?: number
   }
   try {
     body = await request.json()
@@ -135,6 +151,14 @@ export async function PUT(request: NextRequest) {
     typeof body.api_key === 'string' ? body.api_key.trim() : undefined
   const apiSecret =
     typeof body.api_secret === 'string' ? body.api_secret.trim() : undefined
+  const makerFee =
+    typeof body.maker_fee === 'number' && Number.isFinite(body.maker_fee)
+      ? Math.max(0, Math.min(1, body.maker_fee))
+      : undefined
+  const takerFee =
+    typeof body.taker_fee === 'number' && Number.isFinite(body.taker_fee)
+      ? Math.max(0, Math.min(1, body.taker_fee))
+      : undefined
 
   const existing = await prisma.user_exchanges.findFirst({
     where: {id, user_id: session.user.id},
@@ -147,10 +171,14 @@ export async function PUT(request: NextRequest) {
   const data: {
     api_key?: string | null
     api_secret?: string | null
+    maker_fee?: number
+    taker_fee?: number
     updated_at: Date
   } = {updated_at: new Date()}
   if (apiKey !== undefined) data.api_key = apiKey || null
   if (apiSecret !== undefined) data.api_secret = apiSecret || null
+  if (makerFee !== undefined) data.maker_fee = makerFee
+  if (takerFee !== undefined) data.taker_fee = takerFee
 
   const updated = await prisma.user_exchanges.update({
     where: {id},
@@ -165,6 +193,8 @@ export async function PUT(request: NextRequest) {
     url: ex.url ?? null,
     hasApiKey: Boolean(api_key),
     hasApiSecret: Boolean(api_secret),
+    maker_fee: updated.maker_fee,
+    taker_fee: updated.taker_fee,
     active: updated.active,
     created_at: updated.created_at,
     updated_at: updated.updated_at,

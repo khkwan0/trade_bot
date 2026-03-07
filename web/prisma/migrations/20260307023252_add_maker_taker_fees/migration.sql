@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "user_exchanges" ADD COLUMN     "maker_fee" DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+ADD COLUMN     "taker_fee" DOUBLE PRECISION NOT NULL DEFAULT 0.0;
