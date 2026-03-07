@@ -2,6 +2,14 @@ import crypto from 'node:crypto'
 
 const BITKUB_API_BASE = 'https://api.bitkub.com'
 
+/** Kraken requires a strictly increasing nonce per request. Use a monotonic generator to avoid EAPI:Invalid nonce when multiple requests run in parallel. */
+let lastKrakenNonce = 0
+function getKrakenNonce(): string {
+  const now = Date.now() * 1000
+  lastKrakenNonce = Math.max(now, lastKrakenNonce + 1)
+  return lastKrakenNonce.toString()
+}
+
 /**
  * Kraken API-Sign: HMAC-SHA512(URI path + SHA256(nonce + POST data), base64_decode(secret))
  * @see https://docs.kraken.com/api/docs/guides/spot-rest-auth
@@ -58,7 +66,7 @@ export default {
     path: string,
     postData: Record<string, string | number> = {},
   ): Promise<Record<string, string> & {body: string}> {
-    const nonce = Date.now().toString()
+    const nonce = getKrakenNonce()
     const data = {nonce, ...postData}
     const encodedPayload = new URLSearchParams(
       Object.fromEntries(
