@@ -48,6 +48,15 @@ async function sendTelegramMessage(
   }
 }
 
+async function AnswerCallbackQuery(callbackQueryId: string) {
+  const url = `${process.env.TG_API_URL}${process.env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({callback_query_id: callbackQueryId}),
+  })
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -100,6 +109,7 @@ export async function POST(request: NextRequest) {
           response.ttl,
         )
       }
+      AnswerCallbackQuery(callbackQuery.id)
       return NextResponse.json({status: 200})
     }
     return NextResponse.json({status: 200})
